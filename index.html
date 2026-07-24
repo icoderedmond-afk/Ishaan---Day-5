@@ -2,473 +2,241 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Waluigi Run!</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-select=none">
+    <title>EvoArena.io</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body, html {
             width: 100%;
             height: 100%;
             overflow: hidden;
-            background-color: #000;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        #gameContainer {
-            position: relative;
-            width: 100vw;
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            background-color: #12131a;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            user-select: none;
         }
         canvas {
             display: block;
-            background-color: #5c94fc;
-            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+            width: 100vw;
+            height: 100vh;
+            cursor: crosshair;
         }
-        #ui {
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        /* HUD Header */
+        #hud {
             position: absolute;
             top: 20px;
-            left: 30px;
+            left: 20px;
             color: #fff;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+        }
+        #title {
             font-size: 24px;
             font-weight: 900;
-            text-shadow: 3px 3px 0px #000;
-            user-select: none;
+            letter-spacing: 1px;
+            color: #ffd700;
+        }
+        #stage-name {
+            font-size: 18px;
+            font-weight: 700;
+            color: #4facfe;
+            margin-top: 2px;
+        }
+        /* XP Bar */
+        #xp-container {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 50%;
+            max-width: 600px;
+            height: 24px;
+            background: rgba(0, 0, 0, 0.6);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+        #xp-bar {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #00f2fe 0%, #4facfe 100%);
+            transition: width 0.15s ease-out;
+            border-radius: 10px;
+        }
+        #xp-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #fff;
+            font-size: 12px;
+            font-weight: 800;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+        }
+        /* Leaderboard */
+        #leaderboard {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 200px;
+            background: rgba(0, 0, 0, 0.55);
+            border-radius: 8px;
+            padding: 12px;
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        #leaderboard h3 {
+            font-size: 14px;
+            text-align: center;
+            margin-bottom: 8px;
+            color: #ffd700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .lb-entry {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            margin-bottom: 4px;
+            font-weight: 600;
+        }
+        .lb-entry.me { color: #00f2fe; }
+        /* Minimap */
+        #minimap {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 120px;
+            height: 120px;
+            background: rgba(0, 0, 0, 0.6);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+        }
+        /* Game Over Screen */
+        #game-over {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(10, 10, 15, 0.85);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
             pointer-events: none;
-            z-index: 10;
+            transition: opacity 0.3s ease;
+        }
+        #game-over.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        #game-over h1 {
+            font-size: 56px;
+            color: #ff4b2b;
+            text-shadow: 0 4px 20px rgba(255, 75, 43, 0.5);
+            margin-bottom: 10px;
+        }
+        #game-over p {
+            font-size: 20px;
+            color: #ccc;
+            margin-bottom: 25px;
+        }
+        #restart-btn {
+            padding: 14px 32px;
+            font-size: 18px;
+            font-weight: 800;
+            color: #fff;
+            background: linear-gradient(135deg, #ff416c, #ff4b2b);
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(255, 75, 43, 0.4);
+            transition: transform 0.15s ease;
+        }
+        #restart-btn:hover {
+            transform: scale(1.05);
         }
     </style>
 </head>
 <body>
 
-<div id="gameContainer">
-    <div id="ui">WALUIGI RUN! | SCORE: <span id="score">00000</span></div>
-    <canvas id="gameCanvas"></canvas>
+<canvas id="gameCanvas"></canvas>
+
+<div id="ui-layer">
+    <div id="hud">
+        <div id="title">EVOARENA.IO</div>
+        <div id="stage-name">STAGE 1: CAVEMAN</div>
+    </div>
+
+    <div id="leaderboard">
+        <h3>Leaderboard</h3>
+        <div id="lb-list"></div>
+    </div>
+
+    <div id="xp-container">
+        <div id="xp-bar"></div>
+        <div id="xp-text">0 / 100 XP</div>
+    </div>
+
+    <canvas id="minimap" width="120" height="120"></canvas>
+
+    <div id="game-over">
+        <h1>YOU DIED</h1>
+        <p id="final-stats">Kills: 0 | Max Evolution: Caveman</p>
+        <button id="restart-btn" onclick="restartGame()">RESPAWN</button>
+    </div>
 </div>
 
 <script>
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-const scoreEl = document.getElementById('score');
+const minimapCanvas = document.getElementById('minimap');
+const mctx = minimapCanvas.getContext('2d');
 
-// --- VIRTUAL RESOLUTION SETUP (Guarantees visible graphics on all screens) ---
-const V_WIDTH = 960;
-const V_HEIGHT = 540;
-const TILE = 32;
-const GRAVITY = 0.55;
-const LEVEL_LENGTH = 25000; // ~3 Minute Run Length
+// --- WORLD CONFIG ---
+const WORLD_SIZE = 3000;
+const GEM_COUNT = 350;
+const BOT_COUNT = 18;
 
-function fitCanvasToWindow() {
-    const windowWidth = window.innerWidth;
-    const windowHeight = window.innerHeight;
-    const scale = Math.min(windowWidth / V_WIDTH, windowHeight / V_HEIGHT);
+// --- EVOLUTION STAGES ---
+const STAGES = [
+    { name: "Caveman",       xpReq: 0,    radius: 22, speed: 4.2, weaponLen: 45, weaponWidth: 12, weaponColor: "#8B4513", bodyColor: "#d2b48c" },
+    { name: "Viking",        xpReq: 100,  radius: 25, speed: 4.0, weaponLen: 55, weaponWidth: 14, weaponColor: "#a0a0a0", bodyColor: "#cd853f" },
+    { name: "Knight",        xpReq: 300,  radius: 28, speed: 3.8, weaponLen: 68, weaponWidth: 16, weaponColor: "#e0e0e0", bodyColor: "#708090" },
+    { name: "Samurai",       xpReq: 600,  radius: 31, speed: 3.6, weaponLen: 80, weaponWidth: 14, weaponColor: "#c0392b", bodyColor: "#2c3e50" },
+    { name: "Cyber Warrior", xpReq: 1000, radius: 34, speed: 3.4, weaponLen: 95, weaponWidth: 18, weaponColor: "#00f2fe", bodyColor: "#8e44ad" }
+];
 
-    canvas.width = V_WIDTH * scale;
-    canvas.height = V_HEIGHT * scale;
-    ctx.imageSmoothingEnabled = false; // Pixel-art style crispness
-}
-fitCanvasToWindow();
-window.addEventListener('resize', fitCanvasToWindow);
+// --- INPUT STATES ---
+const mouse = { x: 0, y: 0, worldX: 0, worldY: 0, isDown: false, rightDown: false };
+const keys = { w: false, a: false, s: false, d: false, shift: false };
 
-// --- INPUTS ---
-const keys = {};
-let jumpRequested = false;
-
-window.addEventListener('keydown', (e) => {
-    keys[e.code] = true;
-    if (['Space', 'ArrowUp', 'KeyW'].includes(e.code)) {
-        jumpRequested = true;
-    }
+window.addEventListener('mousemove', e => {
+    mouse.x = e.clientX;
+    mouse.y = e.clientY;
 });
-window.addEventListener('keyup', (e) => { keys[e.code] = false; });
-window.addEventListener('pointerdown', () => { jumpRequested = true; });
+window.addEventListener('mousedown', e => {
+    if (e.button === 0) mouse.isDown = true;
+    if (e.button === 2) mouse.rightDown = true;
+});
+window.addEventListener('mouseup', e => {
+    if (e.button === 0) mouse.isDown = false;
+    if (e.button === 2) mouse.rightDown = false;
+});
+window.addEventListener('contextmenu', e => e.preventDefault());
 
-// --- GAME STATE VARIABLES ---
-let score = 0;
-let cameraX = 0;
-let gameOver = false;
-let gameWon = false;
-let animTimer = 0;
-
-const floorY = V_HEIGHT - 64; // Ground line at Y=476
-
-const player = {
-    x: 100,
-    y: floorY - 48,
-    w: 26,
-    h: 46,
-    vx: 0,
-    vy: 0,
-    speed: 4.2,
-    grounded: false,
-    wallSliding: false,
-    wallDir: 0,
-    isSuper: false
-};
-
-let platforms = [];
-let bricks = [];
-let qBlocks = [];
-let pipes = [];
-let enemies = [];
-let powerups = [];
-let flagpole = { x: LEVEL_LENGTH - 400, y: floorY - 256, w: 16, h: 256 };
-
-// --- LEVEL BUILDER ---
-function generateLevel() {
-    platforms = [];
-    bricks = [];
-    qBlocks = [];
-    pipes = [];
-    enemies = [];
-    powerups = [];
-    score = 0;
-    gameOver = false;
-    gameWon = false;
-
-    player.x = 100;
-    player.y = floorY - 48;
-    player.vx = 0;
-    player.vy = 0;
-    player.isSuper = false;
-    player.h = 46;
-
-    let x = 0;
-
-    while (x < LEVEL_LENGTH - 600) {
-        // Create parkour pit gaps
-        if (x > 800 && Math.random() < 0.18) {
-            x += Math.floor(Math.random() * 120 + 110);
-        }
-
-        let segLen = Math.floor(Math.random() * 600 + 400);
-
-        // Ground platforms
-        for (let bx = x; bx < x + segLen; bx += TILE) {
-            platforms.push({ x: bx, y: floorY, w: TILE, h: 64 });
-        }
-
-        // Pipe obstacles
-        if (Math.random() < 0.4) {
-            let px = x + 160;
-            let ph = Math.floor(Math.random() * 32 + 64);
-            pipes.push({ x: px, y: floorY - ph, w: 52, h: ph });
-        }
-
-        // Question blocks & Bricks
-        if (segLen > 350) {
-            let midX = x + segLen / 2;
-            qBlocks.push({ x: midX - 32, y: floorY - 130, w: 32, h: 32, active: true });
-            bricks.push({ x: midX, y: floorY - 130, w: 32, h: 32 });
-            qBlocks.push({ x: midX + 32, y: floorY - 130, w: 32, h: 32, active: true });
-
-            // Higher Parkour Bricks
-            if (Math.random() < 0.5) {
-                for (let i = 0; i < 4; i++) {
-                    bricks.push({ x: midX + 120 + (i * 32), y: floorY - 210, w: 32, h: 32 });
-                }
-            }
-
-            // Enemies (Goombas & Koopas)
-            let eType = Math.random() < 0.5 ? 'goomba' : 'koopa';
-            enemies.push({
-                x: midX + 60,
-                y: floorY - (eType === 'koopa' ? 44 : 30),
-                w: 28,
-                h: eType === 'koopa' ? 44 : 30,
-                type: eType,
-                vx: -1.4,
-                alive: true
-            });
-        }
-
-        x += segLen;
-    }
-
-    // Final Runway to Flag
-    for (let bx = LEVEL_LENGTH - 600; bx < LEVEL_LENGTH + 200; bx += TILE) {
-        platforms.push({ x: bx, y: floorY, w: TILE, h: 64 });
-    }
-}
-
-// Collision Check Helper
-function checkAABB(a, b) {
-    return a.x < b.x + b.w &&
-           a.x + a.w > b.x &&
-           a.y < b.y + b.h &&
-           a.y + a.h > b.y;
-}
-
-// --- UPDATE GAME PHYSICS ---
-function update() {
-    if (gameOver || gameWon) {
-        if (jumpRequested) generateLevel();
-        jumpRequested = false;
-        return;
-    }
-
-    animTimer++;
-
-    // Forward Auto-Run Mechanics
-    let accel = player.speed;
-    if (keys['ArrowRight'] || keys['KeyD']) accel += 1.8;
-    if (keys['ArrowLeft'] || keys['KeyA']) accel -= 2.0;
-
-    player.vx = accel;
-    player.x += player.vx;
-
-    // Apply Gravity
-    player.vy += GRAVITY;
-    player.y += player.vy;
-
-    player.grounded = false;
-    player.wallSliding = false;
-
-    // Ground Platform Collisions
-    platforms.forEach(p => {
-        if (checkAABB(player, p)) {
-            if (player.vy > 0 && player.y + player.h - player.vy <= p.y + 12) {
-                player.y = p.y - player.h;
-                player.vy = 0;
-                player.grounded = true;
-            }
-        }
-    });
-
-    // Pipe Collisions & Wall Sliding
-    pipes.forEach(p => {
-        if (checkAABB(player, p)) {
-            if (player.vy > 0 && player.y + player.h - player.vy <= p.y + 10) {
-                player.y = p.y - player.h;
-                player.vy = 0;
-                player.grounded = true;
-            } else {
-                player.wallSliding = true;
-                player.wallDir = player.x < p.x ? -1 : 1;
-                if (player.vy > 0) player.vy = 1.8; // Slide drag down pipe
-                player.x = player.wallDir === -1 ? p.x - player.w : p.x + p.w;
-            }
-        }
-    });
-
-    // Brick Collisions
-    for (let i = bricks.length - 1; i >= 0; i--) {
-        let b = bricks[i];
-        if (checkAABB(player, b)) {
-            if (player.vy < 0 && player.y - player.vy >= b.y + b.h - 10) {
-                player.vy = 2;
-                if (player.isSuper) {
-                    bricks.splice(i, 1);
-                    score += 100;
-                }
-            } else if (player.vy > 0 && player.y + player.h - player.vy <= b.y + 10) {
-                player.y = b.y - player.h;
-                player.vy = 0;
-                player.grounded = true;
-            }
-        }
-    }
-
-    // Question Mark Block Collisions
-    qBlocks.forEach(q => {
-        if (checkAABB(player, q)) {
-            if (player.vy < 0 && player.y - player.vy >= q.y + q.h - 10) {
-                player.vy = 2;
-                if (q.active) {
-                    q.active = false;
-                    score += 200;
-                    powerups.push({ x: q.x + 2, y: q.y - 28, w: 28, h: 28, vx: 2, vy: -3 });
-                }
-            } else if (player.vy > 0 && player.y + player.h - player.vy <= q.y + 10) {
-                player.y = q.y - player.h;
-                player.vy = 0;
-                player.grounded = true;
-            }
-        }
-    });
-
-    // Jump / Wall Jump Input Handling
-    if (jumpRequested) {
-        if (player.grounded) {
-            player.vy = -13.5;
-        } else if (player.wallSliding) {
-            player.vy = -12;
-            player.vx = player.wallDir * -8;
-        }
-        jumpRequested = false;
-    }
-
-    // Powerup Physics & Pickup
-    for (let i = powerups.length - 1; i >= 0; i--) {
-        let pw = powerups[i];
-        pw.vy += GRAVITY;
-        pw.x += pw.vx;
-        pw.y += pw.vy;
-
-        platforms.forEach(p => {
-            if (checkAABB(pw, p) && pw.vy > 0) {
-                pw.y = p.y - pw.h;
-                pw.vy = 0;
-            }
-        });
-
-        if (checkAABB(player, pw)) {
-            player.isSuper = true;
-            player.h = 58;
-            score += 500;
-            powerups.splice(i, 1);
-        }
-    }
-
-    // Enemy Collisions & Stomping
-    enemies.forEach(e => {
-        if (!e.alive) return;
-        e.x += e.vx;
-
-        if (checkAABB(player, e)) {
-            if (player.vy > 0 && player.y + player.h - player.vy <= e.y + 12) {
-                e.alive = false;
-                player.vy = -9;
-                score += 300;
-            } else {
-                if (player.isSuper) {
-                    player.isSuper = false;
-                    player.h = 46;
-                    e.alive = false;
-                } else {
-                    gameOver = true;
-                }
-            }
-        }
-    });
-
-    // Stage Completion
-    if (checkAABB(player, flagpole)) {
-        gameWon = true;
-    }
-
-    // Fall into Pit
-    if (player.y > V_HEIGHT + 50) {
-        gameOver = true;
-    }
-
-    scoreEl.innerText = String(score).padStart(5, '0');
-    cameraX = player.x - 180;
-}
-
-// --- RENDER LOOP ---
-function draw() {
-    const scale = canvas.width / V_WIDTH;
-
-    ctx.save();
-    ctx.scale(scale, scale);
-
-    // Sky Background
-    ctx.fillStyle = '#5c94fc';
-    ctx.fillRect(0, 0, V_WIDTH, V_HEIGHT);
-
-    ctx.save();
-    ctx.translate(-cameraX, 0);
-
-    // Parallax Hills
-    ctx.fillStyle = '#80d010';
-    for (let h = -200; h < LEVEL_LENGTH; h += 600) {
-        ctx.beginPath();
-        ctx.arc(h + 200, floorY, 120, Math.PI, 0);
-        ctx.fill();
-    }
-
-    // Ground Platforms
-    platforms.forEach(p => {
-        ctx.fillStyle = '#c84c0c';
-        ctx.fillRect(p.x, p.y, p.w, p.h);
-        ctx.fillStyle = '#00a800'; // Grass Top
-        ctx.fillRect(p.x, p.y, p.w, 8);
-        ctx.strokeStyle = '#000';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(p.x, p.y, p.w, p.h);
-    });
-
-    // Pipes
-    pipes.forEach(p => {
-        ctx.fillStyle = '#00a800';
-        ctx.fillRect(p.x, p.y, p.w, p.h);
-        ctx.fillStyle = '#80d010';
-        ctx.fillRect(p.x + 4, p.y, 8, p.h);
-        ctx.strokeStyle = '#000';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(p.x, p.y, p.w, p.h);
-        ctx.strokeRect(p.x - 3, p.y, p.w + 6, 16);
-    });
-
-    // Bricks
-    bricks.forEach(b => {
-        ctx.fillStyle = '#b84418';
-        ctx.fillRect(b.x, b.y, b.w, b.h);
-        ctx.strokeStyle = '#000';
-        ctx.lineWidth = 1.5;
-        ctx.strokeRect(b.x, b.y, b.w, b.h);
-        ctx.beginPath();
-        ctx.moveTo(b.x, b.y + 16); ctx.lineTo(b.x + 32, b.y + 16);
-        ctx.stroke();
-    });
-
-    // Question Mark Blocks
-    qBlocks.forEach(q => {
-        ctx.fillStyle = q.active ? ((Math.floor(animTimer / 15) % 2 === 0) ? '#f89420' : '#d87010') : '#707070';
-        ctx.fillRect(q.x, q.y, q.w, q.h);
-        ctx.strokeStyle = '#000';
-        ctx.lineWidth = 1.5;
-        ctx.strokeRect(q.x, q.y, q.w, q.h);
-        if (q.active) {
-            ctx.fillStyle = '#FFF';
-            ctx.font = 'bold 20px monospace';
-            ctx.fillText('?', q.x + 10, q.y + 24);
-        }
-    });
-
-    // Mushrooms
-    powerups.forEach(pw => {
-        ctx.fillStyle = '#d80000';
-        ctx.beginPath();
-        ctx.arc(pw.x + 14, pw.y + 12, 14, Math.PI, 0);
-        ctx.fill();
-        ctx.fillStyle = '#ffcca0';
-        ctx.fillRect(pw.x + 6, pw.y + 12, 16, 14);
-    });
-
-    // Enemies
-    enemies.forEach(e => {
-        if (!e.alive) return;
-        if (e.type === 'goomba') {
-            ctx.fillStyle = '#943200';
-            ctx.beginPath();
-            ctx.arc(e.x + 14, e.y + 14, 14, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = '#000';
-            ctx.fillRect(e.x + 2, e.y + 22, 8, 8);
-            ctx.fillRect(e.x + 18, e.y + 22, 8, 8);
-        } else {
-            ctx.fillStyle = '#00a800';
-            ctx.beginPath();
-            ctx.arc(e.x + 14, e.y + 28, 12, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = '#f8d000';
-            ctx.fillRect(e.x + 6, e.y + 6, 16, 16);
-        }
-    });
-
-    // Flagpole
-    ctx.fillStyle = '#ccc';
-    ctx.fillRect(flagpole.x, flagpole.y, flagpole.w, flagpole.h);
-    ctx.fillStyle = '#00a800';
-    ctx.fillRect(flagpole.x + flagpole.w, flagpole.y + 16, 48, 32);
-
-    // Waluigi Sprite
-    ctx.fillStyle = '#600090'; // Purple Shirt & Hat
-    ctx.fillRect(player.x + 3, player.y + 2, player.w - 6, 12);
-    ctx.fillRect(player.x + 3, player.y + 16, player.w - 6,
+window.addEventListener('keydown', e => {
+    if (e.key === 'Shift') keys.shift = true;
+});
+window.addEventListener('keyup', e => {
+    if (e.key === 'Shift') keys.shift = false;
+});
