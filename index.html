@@ -4,126 +4,231 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Waluigi Run!</title>
-    <script src="https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js"></script>
     <style>
-        body {
-            margin: 0;
-            padding: 0;
-            background-color: #000;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body, html {
+            width: 100%;
+            height: 100%;
             overflow: hidden;
-            font-family: sans-serif;
+            background-color: #5c94fc;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
-        #game-container {
+        canvas {
+            display: block;
             width: 100vw;
             height: 100vh;
+        }
+        #ui {
+            position: absolute;
+            top: 15px;
+            left: 20px;
+            color: #fff;
+            font-size: 22px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px #000;
+            user-select: none;
+            pointer-events: none;
         }
     </style>
 </head>
 <body>
 
-<div id="game-container"></div>
+<div id="ui">WALUIGI RUN! | SCORE: <span id="score">00000</span></div>
+<canvas id="gameCanvas"></canvas>
 
 <script>
-// --- PROCEDURAL TEXTURE & SPRITE GENERATOR ---
-function createGeneratedTextures(scene) {
-    // 1. Sky / Background Gradient Texture
-    let bgG = scene.make.graphics({ x: 0, y: 0, add: false });
-    bgG.fillStyle(0x5c94fc);
-    bgG.fillRect(0, 0, 512, 512);
-    bgG.fillStyle(0x80d010);
-    bgG.fillCircle(100, 450, 120);
-    bgG.fillCircle(400, 480, 160);
-    bgG.fillStyle(0xffffff, 0.8);
-    bgG.fillCircle(200, 100, 40);
-    bgG.fillCircle(230, 90, 50);
-    bgG.fillCircle(260, 100, 40);
-    bgG.generateTexture('bg_sky', 512, 512);
-    bgG.destroy();
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const scoreEl = document.getElementById('score');
 
-    // 2. Ground / Dirt Block (32x32)
-    let groundG = scene.make.graphics({ add: false });
-    groundG.fillStyle(0xc84c0c);
-    groundG.fillRect(0, 0, 32, 32);
-    groundG.fillStyle(0x00a800);
-    groundG.fillRect(0, 0, 32, 6);
-    groundG.lineStyle(2, 0x000000, 0.4);
-    groundG.strokeRect(0, 0, 32, 32);
-    groundG.fillStyle(0x943200);
-    groundG.fillRect(4, 10, 8, 8);
-    groundG.fillRect(20, 18, 8, 8);
-    groundG.generateTexture('ground_tile', 32, 32);
-    groundG.destroy();
+// Handle Window Resizing
+function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
 
-    // 3. Brick Block (32x32)
-    let brickG = scene.make.graphics({ add: false });
-    brickG.fillStyle(0xb84418);
-    brickG.fillRect(0, 0, 32, 32);
-    brickG.lineStyle(2, 0x000000);
-    brickG.strokeRect(0, 0, 32, 32);
-    brickG.lineStyle(2, 0x501800);
-    brickG.lineBetween(0, 16, 32, 16);
-    brickG.lineBetween(16, 0, 16, 16);
-    brickG.lineBetween(8, 16, 8, 32);
-    brickG.lineBetween(24, 16, 24, 32);
-    brickG.generateTexture('brick', 32, 32);
-    brickG.destroy();
+// --- GAME CONSTANTS & WORLD CONFIG ---
+const GRAVITY = 0.55;
+const TILE_SIZE = 32;
+const LEVEL_LENGTH = 25000; // Large 3-minute Mario Run style level
 
-    // 4. Question Block Frames (32x32 - 2 frames)
-    for (let f = 0; f < 2; f++) {
-        let qG = scene.make.graphics({ add: false });
-        qG.fillStyle(f === 0 ? 0xf89420 : 0xd87010);
-        qG.fillRect(0, 0, 32, 32);
-        qG.lineStyle(2, 0x000000);
-        qG.strokeRect(0, 0, 32, 32);
-        qG.fillStyle(0xffffff);
-        qG.fillRect(12, 6, 8, 4);
-        qG.fillRect(18, 10, 4, 6);
-        qG.fillRect(14, 16, 4, 4);
-        qG.fillRect(14, 22, 4, 4);
-        qG.generateTexture('q_block_' + f, 32, 32);
-        qG.destroy();
+// --- INPUT HANDLER ---
+const keys = {};
+let jumpRequested = false;
+
+window.addEventListener('keydown', (e) => {
+    keys[e.code] = true;
+    if (['Space', 'ArrowUp', 'KeyW'].includes(e.code)) {
+        jumpRequested = true;
+    }
+});
+window.addEventListener('keyup', (e) => { keys[e.code] = false; });
+window.addEventListener('pointerdown', () => { jumpRequested = true; });
+
+// --- GAME STATE ---
+let score = 0;
+let cameraX = 0;
+let gameOver = false;
+let gameWon = false;
+let animTimer = 0;
+
+// Player (Waluigi) Object
+const player = {
+    x: 100,
+    y: 300,
+    w: 28,
+    h: 46,
+    vx: 0,
+    vy: 0,
+    speed: 4.2, // Base Mario Run auto-run speed
+    grounded: false,
+    wallSliding: false,
+    wallDir: 0,
+    isSuper: false
+};
+
+// Level Object Collections
+let platforms = [];
+let bricks = [];
+let qBlocks = [];
+let pipes = [];
+let enemies = [];
+let powerups = [];
+let flagpole = { x: LEVEL_LENGTH - 400, y: 0, w: 20, h: 300 };
+
+// --- LEVEL GENERATOR ---
+function generateLevel() {
+    platforms = [];
+    bricks = [];
+    qBlocks = [];
+    pipes = [];
+    enemies = [];
+    powerups = [];
+    score = 0;
+    gameOver = false;
+    gameWon = false;
+    player.x = 100;
+    player.y = 300;
+    player.vx = 0;
+    player.vy = 0;
+
+    let x = 0;
+    const floorY = canvas.height - 64;
+    flagpole.y = floorY - 280;
+
+    while (x < LEVEL_LENGTH - 600) {
+        // Pit Gaps for Parkour Dynamics
+        if (x > 800 && Math.random() < 0.18) {
+            x += Math.floor(Math.random() * 120 + 100);
+        }
+
+        let segLen = Math.floor(Math.random() * 600 + 400);
+
+        // Ground Floor Tiles
+        for (let bx = x; bx < x + segLen; bx += TILE_SIZE) {
+            platforms.push({ x: bx, y: floorY, w: TILE_SIZE, h: TILE_SIZE * 2 });
+        }
+
+        // Pipe Obstacles
+        if (Math.random() < 0.35) {
+            let px = x + 150;
+            let ph = Math.floor(Math.random() * 40 + 64);
+            pipes.push({ x: px, y: floorY - ph, w: 54, h: ph });
+        }
+
+        // Bricks & Question Blocks Structures
+        if (segLen > 350) {
+            let midX = x + segLen / 2;
+            qBlocks.push({ x: midX - 32, y: floorY - 130, w: 32, h: 32, active: true });
+            bricks.push({ x: midX, y: floorY - 130, w: 32, h: 32 });
+            qBlocks.push({ x: midX + 32, y: floorY - 130, w: 32, h: 32, active: true });
+
+            // Elevated Step Bricks (Parkour)
+            if (Math.random() < 0.5) {
+                for (let i = 0; i < 4; i++) {
+                    bricks.push({ x: midX + 120 + (i * 32), y: floorY - 210, w: 32, h: 32 });
+                }
+            }
+
+            // Enemies
+            let eType = Math.random() < 0.5 ? 'goomba' : 'koopa';
+            enemies.push({
+                x: midX + 60,
+                y: floorY - (eType === 'koopa' ? 44 : 30),
+                w: 30,
+                h: eType === 'koopa' ? 44 : 30,
+                type: eType,
+                vx: -1.5,
+                alive: true
+            });
+        }
+
+        x += segLen;
     }
 
-    // 5. Pipe Graphic (64x64)
-    let pipeG = scene.make.graphics({ add: false });
-    pipeG.fillStyle(0x00a800);
-    pipeG.fillRect(0, 0, 64, 64);
-    pipeG.fillStyle(0x80d010);
-    pipeG.fillRect(6, 0, 10, 64);
-    pipeG.fillStyle(0x005000);
-    pipeG.fillRect(52, 0, 12, 64);
-    pipeG.lineStyle(3, 0x000000);
-    pipeG.strokeRect(0, 0, 64, 64);
-    pipeG.strokeRect(0, 0, 64, 16);
-    pipeG.generateTexture('pipe', 64, 64);
-    pipeG.destroy();
+    // Final Landing Platform before Flag
+    for (let bx = LEVEL_LENGTH - 600; bx < LEVEL_LENGTH + 200; bx += TILE_SIZE) {
+        platforms.push({ x: bx, y: floorY, w: TILE_SIZE, h: TILE_SIZE * 2 });
+    }
+}
 
-    // 6. Waluigi Sprite (32x48)
-    let walG = scene.make.graphics({ add: false });
-    walG.fillStyle(0x600090);
-    walG.fillRect(8, 4, 16, 8);
-    walG.fillRect(8, 20, 16, 12);
-    walG.fillStyle(0xffcca0);
-    walG.fillRect(8, 12, 14, 8);
-    walG.fillStyle(0xffa080);
-    walG.fillRect(22, 14, 6, 4);
-    walG.fillStyle(0x000000);
-    walG.fillRect(10, 18, 18, 3);
-    walG.fillRect(26, 15, 3, 3);
-    walG.fillStyle(0x101050);
-    walG.fillRect(10, 30, 12, 12);
-    walG.fillStyle(0xd85000);
-    walG.fillRect(6, 42, 8, 6);
-    walG.fillRect(18, 42, 8, 6);
-    walG.generateTexture('waluigi', 32, 48);
-    walG.destroy();
+// --- PHYSICS & COLLISION HELPERS ---
+function checkAABB(a, b) {
+    return a.x < b.x + b.w &&
+           a.x + a.w > b.x &&
+           a.y < b.y + b.h &&
+           a.y + a.h > b.y;
+}
 
-    // 7. Goomba Sprite (32x32)
-    let gombG = scene.make.graphics({ add: false });
-    gombG.fillStyle(0x943200);
-    gombG.fillCircle(16, 12, 12);
-    gombG.fillRect(6, 1
+// --- UPDATE LOOP ---
+function update() {
+    if (gameOver || gameWon) {
+        if (jumpRequested) generateLevel();
+        jumpRequested = false;
+        return;
+    }
+
+    animTimer++;
+
+    // Horizontal Movement Dynamics (Mario Run Auto-Forward Runner)
+    let accel = player.speed;
+    if (keys['ArrowRight'] || keys['KeyD']) accel += 1.8;
+    if (keys['ArrowLeft'] || keys['KeyA']) accel -= 2.0;
+
+    player.vx = accel;
+    player.x += player.vx;
+
+    // Apply Gravity
+    player.vy += GRAVITY;
+    player.y += player.vy;
+
+    player.grounded = false;
+    player.wallSliding = false;
+
+    // Platform & Floor Collisions
+    platforms.forEach(p => {
+        if (checkAABB(player, p)) {
+            if (player.vy > 0 && player.y + player.h - player.vy <= p.y + 12) {
+                player.y = p.y - player.h;
+                player.vy = 0;
+                player.grounded = true;
+            }
+        }
+    });
+
+    // Pipe Collisions (Top & Side Walls)
+    pipes.forEach(p => {
+        if (checkAABB(player, p)) {
+            // Landing on pipe top
+            if (player.vy > 0 && player.y + player.h - player.vy <= p.y + 10) {
+                player.y = p.y - player.h;
+                player.vy = 0;
+                player.grounded = true;
+            } else {
+                // Wall Sliding Physics
+                player.wallSliding = true;
+                player.wallDir = player.x < p.x ? -1 : 1;
+                if (player.vy > 0) player.vy = 1.8; // Slide drag
+                player.x = player.wallDir === -1 ? p.x - player
