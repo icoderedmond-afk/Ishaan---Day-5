@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Waluigi Run</title>
+<style>
+    body { margin: 0; overflow: hidden; background: #87CEEB; }
+    canvas { background: #87CEEB; display: block; }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<script>
+// =========================
+// BASIC SETUP
+// =========================
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+canvas.width = 960;
+canvas.height = 540;
+
+let keys = {};
+document.addEventListener("keydown", e => keys[e.key] = true);
+document.addEventListener("keyup", e => keys[e.key] = false);
+
+// =========================
+// PLAYER (WALUIGI)
+// =========================
+const player = {
+    x: 50,
+    y: 0,
+    w: 40,
+    h: 60,
+    velX: 0,
+    velY: 0,
+    speed: 4,
+    jumping: false,
+    grounded: false
+};
+
+// =========================
+// WORLD OBJECTS
+// =========================
+let platforms = [
+    {x:0, y:480, w:2000, h:60}, // ground
+];
+
+let pipes = [
+    {x:300, y:420, w:80, h:60},
+    {x:700, y:420, w:80, h:60}
+];
+
+let questionBoxes = [
+    {x:450, y:350, w:40, h:40, hit:false},
+    {x:900, y:350, w:40, h:40, hit:false}
+];
+
+let coins = [
+    {x:500, y:300, w:20, h:20, collected:false},
+    {x:550, y:300, w:20, h:20, collected:false},
+    {x:600, y:300, w:20, h:20, collected:false}
+];
+
+let goombas = [
+    {x:350, y:450, w:40, h:40, dir:1},
+    {x:800, y:450, w:40, h:40, dir:-1}
+];
+
+let koopas = [
+    {x:600, y:450, w:40, h:40, dir:1}
+];
+
+// Flagpole
+const flag = {x:1800, y:300, w:40, h:180};
+
+// =========================
+// PHYSICS
+// =========================
+const gravity = 0.5;
+const friction = 0.8;
+
+// =========================
+// COLLISION CHECK
+// =========================
+function rectCollision(a, b) {
+    return a.x < b.x + b.w &&
+           a.x + a.w > b.x &&
+           a.y < b.y + b.h &&
+           a.y + a.h > b.y;
+}
+
+// =========================
+// GAME LOOP
+// =========================
+function update() {
+    // Movement input
+    if (keys["ArrowLeft"] || keys["a"]) player.velX = -player.speed;
+    else if (keys["ArrowRight"] || keys["d"]) player.velX = player.speed;
+    else player.velX *= friction;
+
+    if ((keys["ArrowUp"] || keys["w"]) && !player.jumping && player.grounded) {
+        player.jumping = true;
+        player.grounded = false;
+        player.velY = -12;
+    }
+
+    // Apply gravity
+    player.velY += gravity;
+
+    // Move player
+    player.x += player.velX;
+    player.y += player.velY;
+
+    player.grounded = false;
+
+    // Platform collisions
+    [...platforms, ...pipes, ...questionBoxes].forEach(obj => {
+        if (rectCollision(player, obj)) {
+            if (player.velY > 0) {
+                player.y = obj.y - player.h;
+                player.velY = 0;
+                player.jumping = false;
+                player.grounded = true;
+            } else if (player.velY < 0) {
+                player.y = obj.y + obj.h;
+                player.velY = 0;
+
+                // Hit question box
+                if (obj.hit !== undefined && !obj.hit) {
+                    obj.hit = true;
+                    coins.push({x: obj.x + 10, y: obj.y - 30, w:20, h:20, collected:false});
+                }
+            }
+        }
+    });
+
+    // Enemy movement
+    goombas.forEach(g => {
+        g.x += g.dir * 1.5;
+        if (g.x < 300 || g.x > 900) g.dir *= -1;
+
+        if (rectCollision(player, g)) {
+            if (player.velY > 0) {
+                g.dead = true;
+                player.velY = -8;
+            } else {
+                alert("Waluigi died! Refresh to try again.");
+            }
+        }
+    });
+
+    koopas.forEach(k => {
+        k.x += k.dir * 2;
+        if (k.x < 500 || k.x > 1100) k.dir *= -1;
+
+        if (rectCollision(player, k)) {
+            if (player.velY > 0) {
+                k.dead = true;
+                player.velY = -8;
+            } else {
+                alert("Waluigi died! Refresh to try again.");
+            }
+        }
+    });
+
+    // Coin collection
+    coins.forEach(c => {
+        if (!c.collected && rectCollision(player, c)) {
+            c.collected = true;
+        }
+    });
+
+    // Win condition
+    if (rectCollision(player, flag)) {
+        alert("You reached the flag! Waluigi wins!");
+    }
+
+    draw();
+    requestAnimationFrame(update);
+}
+
+// =========================
+// DRAW EVERYTHING
+// =========================
+function draw() {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    // Player (Waluigi)
+    ctx.fillStyle = "purple";
+    ctx.fillRect(player.x, player.y, player.w, player.h);
+
+    // Ground & pipes
+    ctx.fillStyle = "green";
+    platforms.forEach(p => ctx.fillRect(p.x, p.y, p.w, p.h));
+
+    ctx.fillStyle = "darkgreen";
+    pipes.forEach(p => ctx.fillRect(p.x, p.y, p.w, p.h));
+
+    // Question boxes
+    questionBoxes.forEach(q => {
+        ctx.fillStyle = q.hit ? "gray" : "yellow";
+        ctx.fillRect(q.x, q.y, q.w, q.h);
+    });
+
+    // Coins
+    coins.forEach(c => {
+        if (!c.collected) {
+            ctx.fillStyle = "gold";
+            ctx.beginPath();
+            ctx.arc(c.x + 10, c.y + 10, 10, 0, Math.PI*2);
+            ctx.fill();
+        }
+    });
+
+    // Goombas
+    ctx.fillStyle = "brown";
+    goombas.forEach(g => {
+        if (!g.dead) ctx.fillRect(g.x, g.y, g.w, g.h);
+    });
+
+    // Koopas
+    ctx.fillStyle = "green";
+    koopas.forEach(k => {
+        if (!k.dead) ctx.fillRect(k.x, k.y, k.w, k.h);
+    });
+
+    // Flag
+    ctx.fillStyle = "white";
+    ctx.fillRect(flag.x, flag.y, flag.w, flag.h);
+    ctx.fillStyle = "red";
+    ctx.fillRect(flag.x, flag.y, flag.w, 40);
+}
+
+// Start game
+update();
+</script>
+</body>
+</html>
