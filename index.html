@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-select=none">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>EvoArena.io</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -14,10 +14,14 @@
             font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             user-select: none;
         }
-        canvas {
-            display: block;
+        canvas#gameCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
             width: 100vw;
             height: 100vh;
+            display: block;
+            background-color: #191b26;
             cursor: crosshair;
         }
         #ui-layer {
@@ -27,8 +31,8 @@
             width: 100%;
             height: 100%;
             pointer-events: none;
+            z-index: 10;
         }
-        /* HUD Header */
         #hud {
             position: absolute;
             top: 20px;
@@ -45,10 +49,9 @@
         #stage-name {
             font-size: 18px;
             font-weight: 700;
-            color: #4facfe;
+            color: #00f2fe;
             margin-top: 2px;
         }
-        /* XP Bar */
         #xp-container {
             position: absolute;
             bottom: 30px;
@@ -57,18 +60,16 @@
             width: 50%;
             max-width: 600px;
             height: 24px;
-            background: rgba(0, 0, 0, 0.6);
+            background: rgba(0, 0, 0, 0.7);
             border: 2px solid rgba(255, 255, 255, 0.2);
             border-radius: 12px;
             overflow: hidden;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
         }
         #xp-bar {
             width: 0%;
             height: 100%;
-            background: linear-gradient(90deg, #00f2fe 0%, #4facfe 100%);
-            transition: width 0.15s ease-out;
-            border-radius: 10px;
+            background: #00f2fe;
+            transition: width 0.1s ease-out;
         }
         #xp-text {
             position: absolute;
@@ -80,46 +81,42 @@
             font-weight: 800;
             text-shadow: 0 1px 3px rgba(0,0,0,0.9);
         }
-        /* Leaderboard */
         #leaderboard {
             position: absolute;
             top: 20px;
             right: 20px;
-            width: 200px;
-            background: rgba(0, 0, 0, 0.55);
+            width: 180px;
+            background: rgba(0, 0, 0, 0.6);
             border-radius: 8px;
-            padding: 12px;
+            padding: 10px;
             color: #fff;
             border: 1px solid rgba(255,255,255,0.1);
         }
         #leaderboard h3 {
-            font-size: 14px;
+            font-size: 13px;
             text-align: center;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
             color: #ffd700;
             text-transform: uppercase;
-            letter-spacing: 1px;
         }
         .lb-entry {
             display: flex;
             justify-content: space-between;
-            font-size: 12px;
-            margin-bottom: 4px;
+            font-size: 11px;
+            margin-bottom: 3px;
             font-weight: 600;
         }
         .lb-entry.me { color: #00f2fe; }
-        /* Minimap */
         #minimap {
             position: absolute;
             bottom: 20px;
             right: 20px;
-            width: 120px;
-            height: 120px;
-            background: rgba(0, 0, 0, 0.6);
+            width: 110px;
+            height: 110px;
+            background: rgba(0, 0, 0, 0.7);
             border: 2px solid rgba(255, 255, 255, 0.2);
-            border-radius: 8px;
+            border-radius: 6px;
         }
-        /* Game Over Screen */
         #game-over {
             position: absolute;
             top: 0;
@@ -133,110 +130,12 @@
             align-items: center;
             opacity: 0;
             pointer-events: none;
-            transition: opacity 0.3s ease;
+            transition: opacity 0.2s ease;
         }
         #game-over.active {
             opacity: 1;
             pointer-events: auto;
         }
         #game-over h1 {
-            font-size: 56px;
+            font-size: 48px;
             color: #ff4b2b;
-            text-shadow: 0 4px 20px rgba(255, 75, 43, 0.5);
-            margin-bottom: 10px;
-        }
-        #game-over p {
-            font-size: 20px;
-            color: #ccc;
-            margin-bottom: 25px;
-        }
-        #restart-btn {
-            padding: 14px 32px;
-            font-size: 18px;
-            font-weight: 800;
-            color: #fff;
-            background: linear-gradient(135deg, #ff416c, #ff4b2b);
-            border: none;
-            border-radius: 30px;
-            cursor: pointer;
-            box-shadow: 0 4px 15px rgba(255, 75, 43, 0.4);
-            transition: transform 0.15s ease;
-        }
-        #restart-btn:hover {
-            transform: scale(1.05);
-        }
-    </style>
-</head>
-<body>
-
-<canvas id="gameCanvas"></canvas>
-
-<div id="ui-layer">
-    <div id="hud">
-        <div id="title">EVOARENA.IO</div>
-        <div id="stage-name">STAGE 1: CAVEMAN</div>
-    </div>
-
-    <div id="leaderboard">
-        <h3>Leaderboard</h3>
-        <div id="lb-list"></div>
-    </div>
-
-    <div id="xp-container">
-        <div id="xp-bar"></div>
-        <div id="xp-text">0 / 100 XP</div>
-    </div>
-
-    <canvas id="minimap" width="120" height="120"></canvas>
-
-    <div id="game-over">
-        <h1>YOU DIED</h1>
-        <p id="final-stats">Kills: 0 | Max Evolution: Caveman</p>
-        <button id="restart-btn" onclick="restartGame()">RESPAWN</button>
-    </div>
-</div>
-
-<script>
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-const minimapCanvas = document.getElementById('minimap');
-const mctx = minimapCanvas.getContext('2d');
-
-// --- WORLD CONFIG ---
-const WORLD_SIZE = 3000;
-const GEM_COUNT = 350;
-const BOT_COUNT = 18;
-
-// --- EVOLUTION STAGES ---
-const STAGES = [
-    { name: "Caveman",       xpReq: 0,    radius: 22, speed: 4.2, weaponLen: 45, weaponWidth: 12, weaponColor: "#8B4513", bodyColor: "#d2b48c" },
-    { name: "Viking",        xpReq: 100,  radius: 25, speed: 4.0, weaponLen: 55, weaponWidth: 14, weaponColor: "#a0a0a0", bodyColor: "#cd853f" },
-    { name: "Knight",        xpReq: 300,  radius: 28, speed: 3.8, weaponLen: 68, weaponWidth: 16, weaponColor: "#e0e0e0", bodyColor: "#708090" },
-    { name: "Samurai",       xpReq: 600,  radius: 31, speed: 3.6, weaponLen: 80, weaponWidth: 14, weaponColor: "#c0392b", bodyColor: "#2c3e50" },
-    { name: "Cyber Warrior", xpReq: 1000, radius: 34, speed: 3.4, weaponLen: 95, weaponWidth: 18, weaponColor: "#00f2fe", bodyColor: "#8e44ad" }
-];
-
-// --- INPUT STATES ---
-const mouse = { x: 0, y: 0, worldX: 0, worldY: 0, isDown: false, rightDown: false };
-const keys = { w: false, a: false, s: false, d: false, shift: false };
-
-window.addEventListener('mousemove', e => {
-    mouse.x = e.clientX;
-    mouse.y = e.clientY;
-});
-window.addEventListener('mousedown', e => {
-    if (e.button === 0) mouse.isDown = true;
-    if (e.button === 2) mouse.rightDown = true;
-});
-window.addEventListener('mouseup', e => {
-    if (e.button === 0) mouse.isDown = false;
-    if (e.button === 2) mouse.rightDown = false;
-});
-window.addEventListener('contextmenu', e => e.preventDefault());
-
-window.addEventListener('keydown', e => {
-    if (e.key === 'Shift') keys.shift = true;
-});
-window.addEventListener('keyup', e => {
-    if (e.key === 'Shift') keys.shift = false;
-});
