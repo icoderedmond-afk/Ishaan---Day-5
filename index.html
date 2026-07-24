@@ -29,39 +29,37 @@
 
 <script>
 // --- PROCEDURAL TEXTURE & SPRITE GENERATOR ---
-// Generates inline pixel art graphics dynamically so no external image loading issues occur.
-
 function createGeneratedTextures(scene) {
     // 1. Sky / Background Gradient Texture
-    let bgGraphics = scene.make.graphics({x: 0, y: 0, add: false});
-    bgGraphics.fillStyle(0x5c94fc); // Mario Blue Sky
-    bgGraphics.fillRect(0, 0, 512, 512);
-    // Draw distant clouds/hills
-    bgGraphics.fillStyle(0x80d010);
-    bgGraphics.fillCircle(100, 450, 120);
-    bgGraphics.fillCircle(400, 480, 160);
-    bgGraphics.fillStyle(0xffffff, 0.8);
-    bgGraphics.fillCircle(200, 100, 40);
-    bgGraphics.fillCircle(230, 90, 50);
-    bgGraphics.fillCircle(260, 100, 40);
-    bgGraphics.generateTexture('bg_sky', 512, 512);
+    let bgG = scene.make.graphics({ x: 0, y: 0, add: false });
+    bgG.fillStyle(0x5c94fc);
+    bgG.fillRect(0, 0, 512, 512);
+    bgG.fillStyle(0x80d010);
+    bgG.fillCircle(100, 450, 120);
+    bgG.fillCircle(400, 480, 160);
+    bgG.fillStyle(0xffffff, 0.8);
+    bgG.fillCircle(200, 100, 40);
+    bgG.fillCircle(230, 90, 50);
+    bgG.fillCircle(260, 100, 40);
+    bgG.generateTexture('bg_sky', 512, 512);
+    bgG.destroy();
 
     // 2. Ground / Dirt Block (32x32)
-    let groundG = scene.make.graphics({add: false});
-    groundG.fillStyle(0xc84c0c); // Brown dirt
+    let groundG = scene.make.graphics({ add: false });
+    groundG.fillStyle(0xc84c0c);
     groundG.fillRect(0, 0, 32, 32);
-    groundG.fillStyle(0x00a800); // Green grass top layer
+    groundG.fillStyle(0x00a800);
     groundG.fillRect(0, 0, 32, 6);
     groundG.lineStyle(2, 0x000000, 0.4);
     groundG.strokeRect(0, 0, 32, 32);
-    // Inner brick texture details
     groundG.fillStyle(0x943200);
     groundG.fillRect(4, 10, 8, 8);
     groundG.fillRect(20, 18, 8, 8);
     groundG.generateTexture('ground_tile', 32, 32);
+    groundG.destroy();
 
     // 3. Brick Block (32x32)
-    let brickG = scene.make.graphics({add: false});
+    let brickG = scene.make.graphics({ add: false });
     brickG.fillStyle(0xb84418);
     brickG.fillRect(0, 0, 32, 32);
     brickG.lineStyle(2, 0x000000);
@@ -72,24 +70,60 @@ function createGeneratedTextures(scene) {
     brickG.lineBetween(8, 16, 8, 32);
     brickG.lineBetween(24, 16, 24, 32);
     brickG.generateTexture('brick', 32, 32);
+    brickG.destroy();
 
-    // 4. Question Block Frames (32x32 - 2 frames for animation)
+    // 4. Question Block Frames (32x32 - 2 frames)
     for (let f = 0; f < 2; f++) {
-        let qG = scene.make.graphics({add: false});
-        qG.fillStyle(f === 0 ? 0xf89420 : 0xd87010); // Glowing yellow/orange
+        let qG = scene.make.graphics({ add: false });
+        qG.fillStyle(f === 0 ? 0xf89420 : 0xd87010);
         qG.fillRect(0, 0, 32, 32);
         qG.lineStyle(2, 0x000000);
         qG.strokeRect(0, 0, 32, 32);
-        // Question mark
         qG.fillStyle(0xffffff);
         qG.fillRect(12, 6, 8, 4);
         qG.fillRect(18, 10, 4, 6);
         qG.fillRect(14, 16, 4, 4);
         qG.fillRect(14, 22, 4, 4);
         qG.generateTexture('q_block_' + f, 32, 32);
+        qG.destroy();
     }
 
     // 5. Pipe Graphic (64x64)
-    let pipeG = scene.make.graphics({add: false});
-    pipeG.fillStyle(0x00a800); // Mario green
-    pipeG.fillRect(0, 0, 64,
+    let pipeG = scene.make.graphics({ add: false });
+    pipeG.fillStyle(0x00a800);
+    pipeG.fillRect(0, 0, 64, 64);
+    pipeG.fillStyle(0x80d010);
+    pipeG.fillRect(6, 0, 10, 64);
+    pipeG.fillStyle(0x005000);
+    pipeG.fillRect(52, 0, 12, 64);
+    pipeG.lineStyle(3, 0x000000);
+    pipeG.strokeRect(0, 0, 64, 64);
+    pipeG.strokeRect(0, 0, 64, 16);
+    pipeG.generateTexture('pipe', 64, 64);
+    pipeG.destroy();
+
+    // 6. Waluigi Sprite (32x48)
+    let walG = scene.make.graphics({ add: false });
+    walG.fillStyle(0x600090);
+    walG.fillRect(8, 4, 16, 8);
+    walG.fillRect(8, 20, 16, 12);
+    walG.fillStyle(0xffcca0);
+    walG.fillRect(8, 12, 14, 8);
+    walG.fillStyle(0xffa080);
+    walG.fillRect(22, 14, 6, 4);
+    walG.fillStyle(0x000000);
+    walG.fillRect(10, 18, 18, 3);
+    walG.fillRect(26, 15, 3, 3);
+    walG.fillStyle(0x101050);
+    walG.fillRect(10, 30, 12, 12);
+    walG.fillStyle(0xd85000);
+    walG.fillRect(6, 42, 8, 6);
+    walG.fillRect(18, 42, 8, 6);
+    walG.generateTexture('waluigi', 32, 48);
+    walG.destroy();
+
+    // 7. Goomba Sprite (32x32)
+    let gombG = scene.make.graphics({ add: false });
+    gombG.fillStyle(0x943200);
+    gombG.fillCircle(16, 12, 12);
+    gombG.fillRect(6, 1
